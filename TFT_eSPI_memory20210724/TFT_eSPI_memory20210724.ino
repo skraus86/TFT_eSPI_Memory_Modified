@@ -20,10 +20,14 @@
 // The AnimatedGIF class doesn't allocate or free any memory, but the
 // instance data occupies about 22.5K of RAM.
 
+// Modified by Stephen Kraus (skraus86) to add sleep timer and execute esp32 deep sleep
+
 //#define USE_DMA       // ESP32 ~1.25x single frame rendering performance boost for badgers.h
                         // Note: Do not use SPI DMA if reading GIF images from SPI SD card on same bus as TFT
   #define NORMAL_SPEED  // Comment out for rame rate for render speed test
-
+// Sleepmode Value Established
+unsigned long previousMillis = 0;
+long interval = 15000; // 15 seconds
 // Load GIF library
 #include <AnimatedGIF.h>
 AnimatedGIF gif;
@@ -34,7 +38,7 @@ AnimatedGIF gif;
 
                                 // ESP32 40MHz SPI single frame rendering performance
                                 // Note: no DMA performance gain on smaller images or transparent pixel GIFs
-  #define GIF_IMAGE blinky   //  No DMA  63 fps, DMA:  71fps
+#define GIF_IMAGE blinky   //  No DMA  63 fps, DMA:  71fps
 
 
 #include <SPI.h>
@@ -49,7 +53,7 @@ void setup() {
 #ifdef USE_DMA
   tft.initDMA();
 #endif
-  tft.setRotation(0);
+  tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
 
   gif.begin(BIG_ENDIAN_PIXELS);
@@ -58,6 +62,7 @@ void setup() {
 #ifdef NORMAL_SPEED // Render at rate that is GIF controlled
 void loop()
 {
+  unsigned long currentMillis = millis(); //Timer Start
   // Put your main code here, to run repeatedly:
   if (gif.open((uint8_t *)GIF_IMAGE, sizeof(GIF_IMAGE), GIFDraw))
   {
@@ -68,7 +73,10 @@ void loop()
       yield();
     }
     gif.close();
-    tft.endWrite(); // Release TFT chip select for other SPI devices
+    tft.endWrite();  // Release TFT chip select for other SPI devices
+    if(currentMillis - previousMillis >= interval){ //Sleep Mode Timer
+      esp_deep_sleep_start(); 
+    } else {} //Continue if timer value not met
   }
 }
 #else // Test maximum rendering speed
